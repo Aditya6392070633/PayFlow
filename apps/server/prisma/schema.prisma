@@ -1,25 +1,210 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum TxnStatus { pending completed failed refunded disputed }
-enum RequestStatus { pending paid rejected expired }
-enum KycStatus { not_started pending approved rejected }
-enum ScheduleStatus { active paused cancelled failed }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-model User { id String @id @default(cuid()) phone String @unique name String? avatarUrl String? jwtVersion Int @default(0) kycStatus KycStatus @default(not_started) frozen Boolean @default(false) createdAt DateTime @default(now()) wallet Wallet? sent Transactions[] @relation("sent") received Transactions[] @relation("received") notifications Notification[] }
-model Wallet { id String @id @default(cuid()) userId String @unique balance Int @default(0) currency String @default("INR") updatedAt DateTime @updatedAt user User @relation(fields:[userId], references:[id]) }
-model Transactions { id String @id @default(cuid()) senderId String? receiverId String amount Int note String? status TxnStatus @default(pending) category String? createdAt DateTime @default(now()) sender User? @relation("sent", fields:[senderId], references:[id]) receiver User @relation("received", fields:[receiverId], references:[id]) }
-model SplitBill { id String @id @default(cuid()) creatorId String title String totalAmount Int createdAt DateTime @default(now()) participants SplitParticipant[] }
-model SplitParticipant { id String @id @default(cuid()) splitId String userId String amount Int paidAt DateTime? split SplitBill @relation(fields:[splitId], references:[id]) }
-model Notification { id String @id @default(cuid()) userId String type String title String body String read Boolean @default(false) createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id]) }
-model BankAccount { id String @id @default(cuid()) userId String bankName String accountNumberMasked String ifsc String verified Boolean @default(false) createdAt DateTime @default(now()) }
-model UPIId { id String @id @default(cuid()) userId String upiId String @unique primary Boolean @default(false) createdAt DateTime @default(now()) }
-model ContactSync { id String @id @default(cuid()) userId String contactPhoneHash String matchedUserId String? createdAt DateTime @default(now()) }
-model ScheduledPayment { id String @id @default(cuid()) senderId String receiverId String amount Int frequency String nextRunAt DateTime status ScheduleStatus @default(active) createdAt DateTime @default(now()) }
-model PaymentRequest { id String @id @default(cuid()) senderId String receiverId String amount Int note String? status RequestStatus @default(pending) expiresAt DateTime? createdAt DateTime @default(now()) }
-model Reward { id String @id @default(cuid()) userId String points Int @default(0) cashbackAmount Int @default(0) createdAt DateTime @default(now()) }
-model Merchant { id String @id @default(cuid()) ownerId String businessName String kycStatus KycStatus @default(pending) createdAt DateTime @default(now()) }
-model Referral { id String @id @default(cuid()) inviterId String invitedId String? code String rewardAmount Int @default(0) createdAt DateTime @default(now()) }
-model KYC { id String @id @default(cuid()) userId String @unique aadhaarMasked String? panMasked String? selfieUrl String? status KycStatus @default(pending) createdAt DateTime @default(now()) }
-model SavingsGoal { id String @id @default(cuid()) userId String title String targetAmount Int currentAmount Int @default(0) createdAt DateTime @default(now()) }
-model Dispute { id String @id @default(cuid()) transactionId String userId String reason String status String @default("open") createdAt DateTime @default(now()) }
+enum TxnStatus {
+  pending
+  completed
+  failed
+  refunded
+  disputed
+}
+
+enum RequestStatus {
+  pending
+  paid
+  rejected
+  expired
+}
+
+enum KycStatus {
+  not_started
+  pending
+  approved
+  rejected
+}
+
+enum ScheduleStatus {
+  active
+  paused
+  cancelled
+  failed
+}
+
+model User {
+  id             String         @id @default(cuid())
+  phone          String         @unique
+  name           String?
+  avatarUrl      String?
+  jwtVersion     Int            @default(0)
+  kycStatus      KycStatus      @default(not_started)
+  frozen         Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+
+  wallet         Wallet?
+  sent           Transaction[]  @relation("sent")
+  received       Transaction[]  @relation("received")
+  notifications  Notification[]
+}
+
+model Wallet {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  balance    Int      @default(0)
+  currency   String   @default("INR")
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Transaction {
+  id          String    @id @default(cuid())
+  senderId    String?
+  receiverId  String
+  amount      Int
+  note        String?
+  status      TxnStatus @default(pending)
+  category    String?
+  createdAt   DateTime  @default(now())
+
+  sender      User?     @relation("sent", fields: [senderId], references: [id])
+  receiver    User      @relation("received", fields: [receiverId], references: [id])
+}
+
+model SplitBill {
+  id            String             @id @default(cuid())
+  creatorId     String
+  title         String
+  totalAmount   Int
+  createdAt     DateTime           @default(now())
+
+  participants  SplitParticipant[]
+}
+
+model SplitParticipant {
+  id       String    @id @default(cuid())
+  splitId  String
+  userId   String
+  amount   Int
+  paidAt   DateTime?
+
+  split    SplitBill @relation(fields: [splitId], references: [id])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String
+  title      String
+  body       String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model BankAccount {
+  id                   String   @id @default(cuid())
+  userId               String
+  bankName             String
+  accountNumberMasked  String
+  ifsc                 String
+  verified             Boolean  @default(false)
+  createdAt            DateTime @default(now())
+}
+
+model UPIId {
+  id         String   @id @default(cuid())
+  userId     String
+  upiId      String   @unique
+  primary    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model ContactSync {
+  id                String   @id @default(cuid())
+  userId            String
+  contactPhoneHash  String
+  matchedUserId     String?
+  createdAt         DateTime @default(now())
+}
+
+model ScheduledPayment {
+  id          String         @id @default(cuid())
+  senderId    String
+  receiverId  String
+  amount      Int
+  frequency   String
+  nextRunAt   DateTime
+  status      ScheduleStatus @default(active)
+  createdAt   DateTime       @default(now())
+}
+
+model PaymentRequest {
+  id          String        @id @default(cuid())
+  senderId    String
+  receiverId  String
+  amount      Int
+  note        String?
+  status      RequestStatus @default(pending)
+  expiresAt   DateTime?
+  createdAt   DateTime      @default(now())
+}
+
+model Reward {
+  id              String   @id @default(cuid())
+  userId          String
+  points          Int      @default(0)
+  cashbackAmount  Int      @default(0)
+  createdAt       DateTime @default(now())
+}
+
+model Merchant {
+  id            String    @id @default(cuid())
+  ownerId       String
+  businessName  String
+  kycStatus     KycStatus @default(pending)
+  createdAt     DateTime  @default(now())
+}
+
+model Referral {
+  id            String   @id @default(cuid())
+  inviterId     String
+  invitedId     String?
+  code          String
+  rewardAmount  Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model KYC {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  aadhaarMasked  String?
+  panMasked      String?
+  selfieUrl      String?
+  status         KycStatus @default(pending)
+  createdAt      DateTime  @default(now())
+}
+
+model SavingsGoal {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  targetAmount   Int
+  currentAmount  Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model Dispute {
+  id             String   @id @default(cuid())
+  transactionId  String
+  userId         String
+  reason         String
+  status         String   @default("open")
+  createdAt      DateTime @default(now())
+}
