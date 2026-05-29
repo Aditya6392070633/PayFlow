@@ -1,1 +1,52 @@
-import {Router} from 'express';import {sendMoneySchema} from '@payflow/shared';import {auth} from '../middleware/auth';import {validate} from '../middleware/validate';import {prisma} from '../config/prisma';import {send} from '../services/money';import {notify} from '../services/notify';const r=Router();r.use(auth);r.post('/send',validate(sendMoneySchema),async(req,res)=>{try{const txn=await send(req.user!.id,req.body.receiverPhone,req.body.amount,req.body.note);if(txn.receiverId)await notify(txn.receiverId,'payment_received','Payment received',`You received ₹${txn.amount/100}`);res.json({ok:true,data:txn});}catch(e:any){res.status(400).json({ok:false,message:e.message});}});r.get('/',async(req,res)=>{const list=await prisma.transactions.findMany({where:{OR:[{senderId:req.user!.id},{receiverId:req.user!.id}]},orderBy:{createdAt:'desc'},take:Number(req.query.take||25),skip:Number(req.query.skip||0)});res.json({ok:true,data:list});});r.get('/:id',async(req,res)=>res.json({ok:true,data:await prisma.transactions.findUnique({where:{id:req.params.id}})}));export default r;
+import express from 'express';
+import { prisma } from '../config/prisma';
+
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+
+  try {
+
+    const transactions = await prisma.transaction.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return res.json(transactions);
+
+  } catch (error) {
+
+    return res.status(500).json({
+      message: 'Failed to fetch transactions'
+    });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+
+  try {
+
+    const transaction = await prisma.transaction.findUnique({
+      where: {
+        id: req.params.id
+      }
+    });
+
+    if (!transaction) {
+      return res.status(404).json({
+        message: 'Transaction not found'
+      });
+    }
+
+    return res.json(transaction);
+
+  } catch (error) {
+
+    return res.status(500).json({
+      message: 'Failed to fetch transaction'
+    });
+  }
+});
+
+export default router;
