@@ -1,0 +1,18 @@
+import {Router} from 'express';import {auth} from '../middleware/auth';import {validate} from '../middleware/validate';import {bankLinkSchema,upiCreateSchema,paymentRequestSchema,scheduledPaymentSchema,savingsGoalSchema,disputeSchema} from '@payflow/shared';import {prisma} from '../config/prisma';const r=Router();r.use(auth);
+r.post('/banks/link',validate(bankLinkSchema),async(req,res)=>res.json({ok:true,data:await prisma.bankAccount.create({data:{userId:req.user!.id,bankName:req.body.bankName,accountNumberMasked:'XXXX'+req.body.accountNumber.slice(-4),ifsc:req.body.ifsc,verified:true}})}));
+r.get('/banks/accounts',async(req,res)=>res.json({ok:true,data:await prisma.bankAccount.findMany({where:{userId:req.user!.id}})}));
+r.post('/upi/create',validate(upiCreateSchema),async(req,res)=>res.json({ok:true,data:await prisma.uPIId.create({data:{userId:req.user!.id,upiId:req.body.upiId}})}));
+r.post('/contacts/sync',async(req,res)=>res.json({ok:true,message:'contacts sync mock ready'}));
+r.post('/scheduled',validate(scheduledPaymentSchema),async(req,res)=>{const receiver=await prisma.user.findUniqueOrThrow({where:{phone:req.body.receiverPhone}});res.json({ok:true,data:await prisma.scheduledPayment.create({data:{senderId:req.user!.id,receiverId:receiver.id,amount:req.body.amount,frequency:req.body.frequency,nextRunAt:new Date(req.body.nextRunAt)}})});});
+r.get('/analytics/summary',async(req,res)=>{const tx=await prisma.transactions.findMany({where:{OR:[{senderId:req.user!.id},{receiverId:req.user!.id}]}});res.json({ok:true,data:{count:tx.length,spent:tx.filter(t=>t.senderId===req.user!.id).reduce((a,b)=>a+b.amount,0),received:tx.filter(t=>t.receiverId===req.user!.id).reduce((a,b)=>a+b.amount,0)}});});
+r.post('/requests',validate(paymentRequestSchema),async(req,res)=>{const receiver=await prisma.user.findUniqueOrThrow({where:{phone:req.body.receiverPhone}});res.json({ok:true,data:await prisma.paymentRequest.create({data:{senderId:req.user!.id,receiverId:receiver.id,amount:req.body.amount,note:req.body.note}})});});
+r.get('/rewards',async(req,res)=>res.json({ok:true,data:await prisma.reward.upsert({where:{id:req.user!.id},create:{id:req.user!.id,userId:req.user!.id},update:{}})}));
+r.post('/merchant/register',async(req,res)=>res.json({ok:true,data:await prisma.merchant.create({data:{ownerId:req.user!.id,businessName:req.body.businessName||'My Business'}})}));
+r.post('/bills/pay',async(req,res)=>res.json({ok:true,message:'Mock bill paid'}));
+r.post('/referrals/apply',async(req,res)=>res.json({ok:true,message:'Referral applied'}));
+r.post('/kyc/upload',async(req,res)=>res.json({ok:true,data:await prisma.kYC.upsert({where:{userId:req.user!.id},create:{userId:req.user!.id,status:'pending'},update:{status:'pending'}})}));
+r.post('/fraud/check',async(req,res)=>res.json({ok:true,data:{risk:'low',score:12}}));
+r.get('/fx/rates',async(req,res)=>res.json({ok:true,data:{INR:1,USD:83.2,EUR:90.1}}));
+r.post('/savings',validate(savingsGoalSchema),async(req,res)=>res.json({ok:true,data:await prisma.savingsGoal.create({data:{userId:req.user!.id,title:req.body.title,targetAmount:req.body.targetAmount}})}));
+r.post('/disputes',validate(disputeSchema),async(req,res)=>res.json({ok:true,data:await prisma.dispute.create({data:{userId:req.user!.id,transactionId:req.body.transactionId,reason:req.body.reason}})}));
+export default r;

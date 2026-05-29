@@ -1,0 +1,17 @@
+import { z } from 'zod';
+export const phoneSchema=z.string().min(10).max(15);
+export const amountSchema=z.number().int().positive();
+export const sendOtpSchema=z.object({phone:phoneSchema});
+export const verifyOtpSchema=z.object({phone:phoneSchema,otp:z.string().length(6),name:z.string().optional()});
+export const sendMoneySchema=z.object({receiverPhone:phoneSchema,amount:amountSchema,note:z.string().max(120).optional()});
+export const topupSchema=z.object({amount:amountSchema});
+export const splitCreateSchema=z.object({title:z.string().min(2),totalAmount:amountSchema,participants:z.array(z.object({phone:phoneSchema,amount:amountSchema})).min(1)});
+export const paymentRequestSchema=z.object({receiverPhone:phoneSchema,amount:amountSchema,note:z.string().optional()});
+export const scheduledPaymentSchema=z.object({receiverPhone:phoneSchema,amount:amountSchema,frequency:z.enum(['daily','weekly','monthly']),nextRunAt:z.string()});
+export const bankLinkSchema=z.object({bankName:z.string(),accountNumber:z.string().min(6),ifsc:z.string().min(6)});
+export const upiCreateSchema=z.object({upiId:z.string().min(3)});
+export const savingsGoalSchema=z.object({title:z.string(),targetAmount:amountSchema});
+export const disputeSchema=z.object({transactionId:z.string(),reason:z.string().min(5)});
+export type ApiResponse<T>={ok:boolean;data?:T;message?:string};
+export const paise=(rupees:number)=>Math.round(rupees*100);
+export const rupees=(paise:number)=>(paise/100).toFixed(2);
